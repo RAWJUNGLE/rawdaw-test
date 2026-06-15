@@ -69,8 +69,15 @@ jobs:
       # macOS: code-signing + notarization (only if secrets are configured).
       # Supply CSC_LINK (base64 .p12), CSC_KEY_PASSWORD, APPLE_ID,
       # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID as repository secrets.
+      # Windows signing (optional): set WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD secrets.
       - name: Package
-        run: ${{ matrix.build }}
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ] && [ -n "${{ secrets.WIN_CSC_LINK }}" ]; then
+            export WIN_CSC_LINK="${{ secrets.WIN_CSC_LINK }}"
+            export WIN_CSC_KEY_PASSWORD="${{ secrets.WIN_CSC_KEY_PASSWORD }}"
+          fi
+          ${{ matrix.build }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
@@ -78,9 +85,6 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows signing (optional): WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
