@@ -1,0 +1,105 @@
+# Builds RAWDAW for macOS (arm64 + x64), Windows (x64) and Linux (x64).
+# Each runner natively compiles the C++ core (rawcore.node) against the Electron
+# ABI, then electron-builder packages the installers. Artifacts are uploaded per
+# platform; pushing a tag (v*) also drafts a GitHub Release with all of them.
+name: build
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (arm64 + x64)
+            os: macos-14            # Apple-silicon runner; builds both arches
+            build: npm run dist:mac
+          - name: Windows (x64)
+            os: windows-latest
+            build: npm run dist:win
+          - name: Linux (x64)
+            os: ubuntu-22.04
+            build: npm run dist:linux
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python (node-gyp)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Linux needs the usual native + AppImage/fuse toolchain
+      - name: Linux build deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libfuse2
+
+      # Install JS deps. postinstall builds the native addon and rebuilds it
+      # against the Electron ABI via @electron/rebuild.
+      - name: Install
+        run: npm install
+
+      # Verify the native core from Node before packaging (fast safety net).
+      - name: Test native core
+        run: npm run test:native
+
+      # macOS: code-signing + notarization (only if secrets are configured).
+      # Supply CSC_LINK (base64 .p12), CSC_KEY_PASSWORD, APPLE_ID,
+      # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID as repository secrets.
+      - name: Package
+        run: ${{ matrix.build }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows signing (optional): WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rawdaw-${{ runner.os }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: warn
+
+  release:
+    name: Draft release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

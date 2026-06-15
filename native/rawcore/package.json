@@ -1,0 +1,20 @@
+{
+  "name": "rawcore",
+  "version": "1.0.0",
+  "description": "RAWDAW native core (C++): BPM detection + offline time-stretch.",
+  "main": "index.js",
+  "license": "SEE LICENSE IN vendor/*",
+  "gypfile": true,
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "build": "node-gyp build",
+    "rebuild": "node-gyp rebuild",
+    "test": "node test/test-bpm.js"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.0.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.0.0"
+  }
+}
