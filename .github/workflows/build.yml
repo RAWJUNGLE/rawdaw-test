@@ -30,7 +30,7 @@ jobs:
             build: npm run dist:linux
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: false
 
@@ -50,10 +50,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libfuse2
 
-      # Install JS deps. postinstall builds the native addon and rebuilds it
-      # against the Electron ABI via @electron/rebuild.
-      - name: Install
-        run: npm install
+      # Install JS deps (skip postinstall to avoid recursive npm on Windows).
+      - name: Install (root)
+        run: npm install --ignore-scripts
+
+      - name: Install native core deps & rebuild for Electron
+        run: |
+          npm --prefix native/rawcore install
+          npm run rebuild:native
 
       # Verify the native core from Node before packaging (fast safety net).
       - name: Test native core
