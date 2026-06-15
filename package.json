@@ -2,7 +2,7 @@
   "name": "rawdaw-desktop",
   "version": "1.0.0",
   "description": "RAWDAW — native desktop build (Electron shell + C++ core).",
-  "author": "RAWDAW",
+  "author": { "name": "RAWDAW", "email": "rawdaw@example.com" },
   "license": "SEE LICENSE IN native/rawcore/vendor",
   "main": "src/main/main.js",
   "scripts": {
