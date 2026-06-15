@@ -66,25 +66,14 @@ jobs:
       - name: Test native core
         run: npm run test:native
 
-      # macOS: code-signing + notarization (only if secrets are configured).
-      # Supply CSC_LINK (base64 .p12), CSC_KEY_PASSWORD, APPLE_ID,
-      # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID as repository secrets.
-      # Windows signing (optional): set WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD secrets.
+      # Code signing (macOS + Windows) is optional. To enable it, set the
+      # relevant secrets in the repo settings and restore CSC_LINK / CSC_KEY_PASSWORD
+      # (macOS) and/or WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD (Windows) in the env
+      # block below. See https://www.electron.build/code-signing
       - name: Package
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" = "Windows" ] && [ -n "${{ secrets.WIN_CSC_LINK }}" ]; then
-            export WIN_CSC_LINK="${{ secrets.WIN_CSC_LINK }}"
-            export WIN_CSC_KEY_PASSWORD="${{ secrets.WIN_CSC_KEY_PASSWORD }}"
-          fi
-          ${{ matrix.build }}
+        run: CSC_IDENTITY_AUTO_DISCOVERY=false ${{ matrix.build }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
